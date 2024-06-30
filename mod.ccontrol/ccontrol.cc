@@ -1480,56 +1480,6 @@ switch( theEvent )
 		--curUsers;
 		string tIP = xIP( tmpUser->getIP()).GetNumericIP(true);
 		ipLDropClient(tmpUser);
-		if ((checkClones) && (irc_in_addr_valid(&tmpUser->getIP()))) //avoid 0:: (0.0.0.0) ip addresses
-			{
-            if (irc_in_addr_is_ipv4(&tmpUser->getIP()))
-            {
-            	is_ipv4 = true;
-       			client_ip = IPCIDRMinIP(tIP,CClonesCIDR24 + 96);
-	    }
-	    else
-	        {
-    			client_ip = IPCIDRMinIP(tIP,CClonesCIDR48);
-	        }
-				if ((clientsIp24Map.find(client_ip) != clientsIp24Map.end()) && 
-					(--clientsIp24Map[client_ip] < 1))
-	                        {
-	                                clientsIp24Map.erase(clientsIp24Map.find(client_ip));
-					if ((clientsIp24MapLastWarn.find(client_ip) != clientsIp24MapLastWarn.end()) &&
-						(clientsIp24MapLastWarn[client_ip] > 0))
-							clientsIp24MapLastWarn.erase(clientsIp24MapLastWarn.find(client_ip));
-	                        }
-
-				/* ident clones */
-				sprintf(Log, "%s/%d-%s", client_ip.c_str(), is_ipv4 ? CClonesCIDR24 : CClonesCIDR48, tmpUser->getUserName().c_str());
-				if ((clientsIp24IdentMap.find(Log) != clientsIp24IdentMap.end()) &&
-					(--clientsIp24IdentMap[Log] < 1))
-				{
-					clientsIp24IdentMap.erase(clientsIp24IdentMap.find(Log));
-					if ((clientsIp24IdentMapLastWarn.find(Log) != clientsIp24IdentMapLastWarn.end()) &&
-						(clientsIp24IdentMapLastWarn[Log] > 0))
-							clientsIp24IdentMapLastWarn.erase(clientsIp24IdentMapLastWarn.find(Log));
-				}
-
-			if ((clientsIpMap.find(tIP) != clientsIpMap.end()) && (--clientsIpMap[tIP] < 1))
-				{
-				clientsIpMap.erase(clientsIpMap.find(tIP));
-				}
-			string ipClass;
-        	if (is_ipv4)
-        		ipClass = IPCIDRMinIP(tIP,120) + "/24";
-			else
-				ipClass = IPCIDRMinIP(tIP,48) + "/48";
-			string virtualHost = tmpUser->getDescription() + "@" + ipClass;
-			if ((virtualClientsMap.find(virtualHost) != virtualClientsMap.end()) &&
-				(--virtualClientsMap[virtualHost] < 1))
-				{
-				virtualClientsMap.erase(virtualClientsMap.find(virtualHost));
-				if ((virtualClientsMapLastWarn.find(virtualHost) != virtualClientsMapLastWarn.end()) &&
-					(virtualClientsMapLastWarn[virtualHost] > 0))
-						virtualClientsMapLastWarn.erase(virtualClientsMapLastWarn.find(virtualHost));
-				}
-			}
 		ccUserData* UserData = static_cast< ccUserData* >(
 		tmpUser->getCustomData(this))  ;
 		tmpUser->removeCustomData(this);
@@ -2229,21 +2179,15 @@ if (NewUser->isModeR()) {
 if(dbConnected)
 	{
 	string tIP = xIP( NewUser->getIP()).GetNumericIP();
-/*DEBUG*///elog << "ccontrol::handleNewClient> tIP = " << tIP << endl;
 	if (irc_in_addr_is_ipv4(&NewUser->getIP()))
 		{
-		CClonesCIDR = CClonesCIDR24;
 		is_ipv4 = true;
-		}
-	else
-		CClonesCIDR = CClonesCIDR48;
-
-	if (is_ipv4)
 		client_ip = IPCIDRMinIP(tIP, CClonesCIDR + 96);
+		}
 	else
 		client_ip = IPCIDRMinIP(tIP, CClonesCIDR);
 
-	if ((checkClones) && (irc_in_addr_valid(&NewUser->getIP()))) //avoid 0:: (0.0.0.0) ip addresses
+	if (irc_in_addr_valid(&NewUser->getIP())) //avoid 0:: (0.0.0.0) ip addresses
 		{
 		bool isClientDropped = false;
 		ccIpLnb* nb;
@@ -5830,16 +5774,7 @@ void ccontrol::showStatus(iClient* tmpClient)
 {
 Notice(tmpClient,"CControl version %s.%s [%s]",MAJORVER,MINORVER,RELDATE);
 Notice(tmpClient, "Service Uptime: %s", Ago(getUplink()->getStartTime()));
-if(checkClones)
-	{
-	Notice(tmpClient,"Monitoring %d different clones hosts\n",clientsIpMap.size());
-	Notice(tmpClient,"and %d different CIDR clones hosts (%d rate-limit entries)\n",
-		clientsIp24Map.size(), clientsIp24MapLastWarn.size());
-	Notice(tmpClient,"and %d different CIDR ident clones hosts (%d rate-limit entries)\n",
-		clientsIp24IdentMap.size(), clientsIp24IdentMapLastWarn.size());
-	Notice(tmpClient,"and %d different virtual clones hosts (%d rate-limit entries)\n",
-		virtualClientsMap.size(), virtualClientsMapLastWarn.size());
-	}	
+Notice(tmpClient,"Monitoring %d different clones hosts\n",clientsIpMap.size());
 Notice(tmpClient,"%d glines are waiting in the gline queue",glineQueue.size());
 Notice(tmpClient,"Allocated Structures:");
 Notice(tmpClient,"ccServer: %d, ccGline: %d, ccException: %d, ccUser: %d, ccIpLisp: %d, ccIpLnb: %d",
