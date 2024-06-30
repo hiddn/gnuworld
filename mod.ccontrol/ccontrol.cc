@@ -200,8 +200,6 @@ showCGIpsInLogs = atoi(conf.Require("showCGIpsInLogs")->second.c_str());
 
 dbConnectionTimer = atoi(conf.Require("dbinterval")->second.c_str());
 
-StdCloneChecksDisabled = atoi(conf.Require("StdCloneChecksDisabled")->second.c_str());
-
 AnnounceNick = conf.Require("AnnounceNick")->second;
 
 iauthTimeout = atoi(conf.Require("iauthTimeout")->second.c_str());
@@ -2247,38 +2245,6 @@ if(dbConnected)
 
 	if ((checkClones) && (irc_in_addr_valid(&NewUser->getIP()))) //avoid 0:: (0.0.0.0) ip addresses
 		{
-		sprintf(Log, "%s/%d-%s", client_ip.c_str(), CClonesCIDR, NewUser->getUserName().c_str());
-		int CurIdentConnections = ++clientsIp24IdentMap[Log];
-		int CurCIDRConnections = ++clientsIp24Map[client_ip];
-		sprintf(Log,"*@%s/%d", client_ip.c_str(), CClonesCIDR);
-
-		/* check idents to see if we have too many */
-		if ((CurIdentConnections > maxIClones) && (CurIdentConnections > getExceptions(NewUser->getUserName() + "@" + tIP)) &&
-			(CurIdentConnections > getExceptions(NewUser->getUserName() + "@" + NewUser->getRealInsecureHost())))
-			{
-			/* too many - send a warning to the chanlog if within warning range */
-			if ((clientsIp24IdentMapLastWarn[Log] + CClonesTime) <= time(NULL))
-				{
-				MsgChanLog("Excessive CIDR Ident clones (%d) for %s@%s/%d (will%s GLINE)\n",
-					CurIdentConnections, NewUser->getUserName().c_str(), client_ip.c_str(),
-					CClonesCIDR, IClonesGline ? "" : " _NOT_");
-				clientsIp24IdentMapLastWarn[Log] = time(NULL);
-				}
-			/* check for auto-gline feature */
-			if (IClonesGline)
-				{
-				sprintf(Log,"Glining %s@%s/%d for excessive CIDR ident connections (%d)",
-					NewUser->getUserName().c_str(), client_ip.c_str(), CClonesCIDR, CurIdentConnections);
-		/*DEBUG*/elog << "ccontrol::handleNewClient> " << Log << endl;
-				sprintf(GlineMask,"%s@%s/%d", NewUser->getUserName().c_str(), client_ip.c_str(), CClonesCIDR);
-				AffectedUsers = CurIdentConnections;
-				/* set the gline reason */
-				sprintf(GlineReason,"AUTO [%d] Automatically banned for excessive CIDR ident connections%s", AffectedUsers, url_excessive_conn.c_str());
-				DoGline = true;
-				gDuration = maxGlineLen;
-				}
-			}
-
 		bool isClientDropped = false;
 		ccIpLnb* nb;
 		ipLretStructListType retList;
@@ -2346,38 +2312,6 @@ if(dbConnected)
 			else {
 				netblock = IPCIDRMinIP(tIP, tcidr) + "/" + std::to_string(nb->getCloneCidr());
 			}
-			if ((clientsIp24MapLastWarn[nbstring] + CClonesTime) <= time(NULL)) {
-				if (isUserban && nb->isActive()) {
-					/* Don't bother reporting excessive connections for user@ clones we're not gonna gline */
-					if (group) {
-						MsgChanLog("Excessive CIDR ident clones (%d/%d) for user %s@ in GROUP %s [ref: %s] (will%s GLINE)\n",
-							ipLconncount, rs.limit, user.c_str(), nb->ipLisp->getName().c_str(),
-							nb->getCidr().c_str(), nb->isActive() && !nb->isNoGline() ? "" : " _NOT_");
-
-					}
-					else {	
-						MsgChanLog("Excessive CIDR ident clones (%d/%d) for %s [ref: %s] (will%s GLINE)\n",
-							ipLconncount, rs.limit, rs.mask.c_str(),
-							nb->getCidr().c_str(), nb->isActive() && !nb->isNoGline() ? "" : " _NOT_");
-
-					}
-					clientsIp24MapLastWarn[nbstring] = time(NULL);
-				}
-				else if (!isUserban && !isUnidentedBan) {
-					if (group) {
-						MsgChanLog("Excessive connections (%d/%d) from GROUP %s [ref: %s] (will%s GLINE)\n",
-							ipLconncount, rs.limit, nb->ipLisp->getName().c_str(),
-							nb->getCidr().c_str(), !ipLRetVal && nb->isActive() && !nb->isNoGline() ? "" : " _NOT_");
-					}
-					else {
-						MsgChanLog("Excessive connections (%d/%d) from subnet *@%s [ref: %s's %s] (will%s GLINE)\n",
-							ipLconncount, rs.limit, netblock.c_str(), nb->ipLisp->getName().c_str(),
-							nb->getCidr().c_str(), !ipLRetVal && nb->isActive() && !nb->isNoGline() ? "" : " _NOT_");
-					}
-					clientsIp24MapLastWarn[nbstring] = time(NULL);
-				}
-			}
-
 			string netblocks;
 			/* check for auto-gline feature */
 			if (!ipLRetVal && nb->isActive() && !nb->isNoGline()) {
@@ -2477,104 +2411,7 @@ if(dbConnected)
 				}
 			}
 		}
-		//START Replacement for shell related part
-		if (!StdCloneChecksDisabled)
-		if (!irc_in_addr_is_ipv4(&NewUser->getIP()))
-		if ((CurCIDRConnections > maxCClones) && (CurCIDRConnections > getExceptions(NewUser->getUserName()+"@" + tIP)) &&
-				(CurCIDRConnections > getExceptions(NewUser->getUserName()+"@"+NewUser->getRealInsecureHost())))
-			{
-			if ((clientsIp24MapLastWarn[client_ip] + CClonesTime) <= time(NULL))
-				{
-					MsgChanLog("Excessive connections (%d) from subnet *@%s/%d (will%s GLINE)\n",
-							CurCIDRConnections, client_ip.c_str(), CClonesCIDR, CClonesGline ? "" : " _NOT_");
-					clientsIp24MapLastWarn[client_ip] = time(NULL);
-				}
-
-			/* check for auto-gline feature */
-			if ((CClonesGline))
-				{
-				sprintf(Log,"Glining *@%s/%d for excessive connections (%d)",
-						client_ip.c_str(), CClonesCIDR, CurCIDRConnections);
-				sprintf(GlineMask,"*@%s/%d", client_ip.c_str(), CClonesCIDR);
-				AffectedUsers = CurCIDRConnections;
-				/* set the gline reason */
-				sprintf(GlineReason,"AUTO [%d] Automatically banned for excessive CIDR connections%s", AffectedUsers, url_excessive_conn.c_str());
-				DoGline = true;
-				gDuration = CClonesGTime;
-				}
-			}
-		//END Replacement for shell related part
-		int CurConnections = ++clientsIpMap[client_ip];
-
-		if (!StdCloneChecksDisabled)
-		if ((CurConnections > maxClones) && (CurConnections  > getExceptions(NewUser->getUserName()+"@" + client_ip)) &&
-				(CurConnections > getExceptions(NewUser->getUserName()+"@"+NewUser->getRealInsecureHost())) && (!DoGline))
-			{
-			sprintf(Log,"*@%s", NewUser->getRealInsecureHost().c_str());
-			MsgChanLog("Excessive connections [%d] from host *@%s [%s] server:{%s}\n",
-					CurConnections,NewUser->getRealInsecureHost().c_str(), client_ip.c_str(),	NewUser->getServer()->getName().c_str());
-			sprintf(Log,"Glining *@%s for excessive connections (%d)", client_ip.c_str(), CurConnections);
-			sprintf(GlineMask,"*@%s",client_ip.c_str());
-			AffectedUsers = CurConnections;
-			/* set the gline reason */
-			sprintf(GlineReason,"AUTO [%d] Automatically banned for excessive connections%s", AffectedUsers, url_excessive_conn.c_str());
-			DoGline = true;
-			gDuration = maxGlineLen;
-			}
-		if (DoGline)
-			{
-			iClient* theClient = Network->findClient(this->getCharYYXXX());
-#ifndef LOGTOHD
-			DailyLog(theClient,"%s",Log);
-#else
-			ccLog* newLog = new (std::nothrow) ccLog();
-			newLog->Time = ::time(0);
-			newLog->Desc = Log;
-			newLog->Host = theClient->getRealNickUserHost().c_str();
-			newLog->User = "Me";
-			newLog->CommandName = "AUTOGLINE";
-			DailyLog(newLog);
-#endif
-			glSet = true;
-			ccGline *tmpGline;
-			tmpGline = new ccGline(SQLDb);
-			tmpGline->setHost(GlineMask);
-			tmpGline->setExpires(::time(0) + gDuration);
-			tmpGline->setReason(GlineReason);
-			tmpGline->setAddedOn(::time(0));
-			tmpGline->setAddedBy(nickName);
-			tmpGline->setLastUpdated(::time(0));
-			tmpGline->Insert();
-			tmpGline->loadData(tmpGline->getHost());
-			addGline(tmpGline);
-			if(!getUplink()->isBursting())
-				addGlineToUplink(tmpGline);
-			}
-		else
-			{
-			/*DEBUG*///elog << "ccontrol::handleNewClient> Checking Virtual Clones case ..." << endl;
-			string ipClass;
-			if (is_ipv4)
-				ipClass = IPCIDRMinIP(tIP,120) + "/24";
-			else
-				ipClass = IPCIDRMinIP(tIP,48) + "/48";
-			string virtualHost = NewUser->getDescription() + '@' + ipClass;
-			CurConnections = ++virtualClientsMap[virtualHost];
-			if((CurConnections > maxVClones) &&
-				(CurConnections > getExceptions("*@" + createClass(tIP))))	//getExceptions("*@" + ipClass)))
-				{
-				/* check for rate limiting */
-				if ((virtualClientsMapLastWarn[virtualHost] + CClonesTime) <= time(NULL))
-					{
-					/* send the chanlog message and dont warn for another CClonesTime seconds */
-					MsgChanLog("Virtual clones for real name %s on %s, total connections %d\n",
-						NewUser->getDescription().c_str()
-						,ipClass.c_str()
-						,CurConnections);
-					virtualClientsMapLastWarn[virtualHost] = time(NULL);
-					}
-				}
-			}
+		++clientsIpMap[client_ip];
 		}
 	}
 if (!IsAuth(NewUser))

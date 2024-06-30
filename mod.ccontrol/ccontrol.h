@@ -1247,8 +1247,6 @@ protected:
 
 	bool			showCGIpsInLogs;
 
-	bool			StdCloneChecksDisabled;
-
 	time_t			dbConnectionTimer;
 
 	time_t			iauthTimeout;
