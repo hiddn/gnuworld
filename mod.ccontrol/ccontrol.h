@@ -1021,42 +1021,6 @@ public:
 	clientsIpIterator clientsIp_end()
 		{ return clientsIpMap.end(); }
 
-	clientsIpMapType		clientsIp24Map;
-
-	clientsIpMapType		clientsIp24MapLastWarn;
-
-	clientsIpIterator clientsIp24_begin()
-		{ return clientsIp24Map.begin(); }
-
-	clientsIpIterator clientsIp24_end()
-		{ return clientsIp24Map.end(); }
-
-	clientsIpMapType		clientsIp24IdentMap;
-
-	clientsIpMapType		clientsIp24IdentMapLastWarn;
-
-	clientsIpIterator clientsIp24IdentMap_begin()
-		{ return clientsIp24IdentMap.begin(); }
-
-	clientsIpIterator clientsIp24IdentMap_end()
-		{ return clientsIp24IdentMap.end(); }
-	
-	clientsIpMapType		virtualClientsMap;
-
-	clientsIpIterator virtualClientsMap_begin()
-		{ return virtualClientsMap.begin(); }
-					
-	clientsIpIterator virtualClientsMap_end()
-		{ return virtualClientsMap.end(); }
-
-	clientsIpMapType		virtualClientsMapLastWarn;
-
-	clientsIpIterator virtualClientsMapLastWarn_begin()
-		{ return virtualClientsMapLastWarn.begin(); }
-
-	clientsIpIterator virtualClientsMapLastWarn_end()
-		{ return virtualClientsMapLastWarn.end(); }
-	
 	typedef  usersMapType::const_iterator	usersconstiterator;
 	
 	typedef  accountsMapType::const_iterator	accountsconstiterator;
