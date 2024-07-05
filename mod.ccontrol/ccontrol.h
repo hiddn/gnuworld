@@ -65,7 +65,7 @@
 #include        "ccGline.h"
 #include        "ccServer.h"
 #include 	"ccFloodData.h"
-#include 	"ccException.h"
+#include	"ccException.h"
 #include        "server.h"
 #include	"CommandsDec.h"
 #include 	"ccBadChannel.h"
@@ -198,10 +198,6 @@ protected:
 	typedef list< ccFloodData* >	ignoreListType;
 	
 	ignoreListType			ignoreList;
-	
-	typedef list< ccException* >    exceptionListType;
-	
-	exceptionListType		exceptionList;
 	
 	typedef std::list< string >    stringListType;
 	
@@ -722,12 +718,6 @@ public:
 
 	void addGlinedException( const string & );
 	
-	bool listExceptions( iClient * );
-	
-	bool insertException( iClient * , const string & , int , const string &);
-
-	bool delException( iClient * , const string & );
-
 	bool isValidCidr( const string & );
 
 	bool getValidCidr( const string &, string &  );
@@ -999,17 +989,10 @@ public:
 	ignoreIterator ignore_end()
 		{ return ignoreList.end() ; }
 	
-	typedef exceptionListType::iterator exceptionIterator;
 	typedef ipLispVectorType::iterator ipLispIterator;
 	typedef ipLnbVectorType::iterator ipLnbIterator;
 	typedef ipLnumericMapType::iterator ipLnumericIterator;
 	typedef ipLclonesMapType::iterator ipLclonesMapIterator;
-	
-	exceptionIterator exception_begin() 
-		{ return exceptionList.begin(); }
-
-	exceptionIterator exception_end()
-		{ return exceptionList.end(); }
 	
 	clientsIpMapType		clientsIpMap;
 

@@ -651,16 +651,6 @@ RegisterCommand( new REMSGLINECommand( this, "REMSGLINE",
 	operLevel::CODERLEVEL,
 	true ) ) ;
 
-RegisterCommand( new EXCEPTIONCommand( this, "EXCEPTIONS",
-	"(list / add / del) [host mask]"
-	"Add connection exceptions on hosts",
-	true,
-	commandLevel::flg_EXCEPTIONS,
-	false,
-	true,
-	false,
-	operLevel::OPERLEVEL,
-	true ) ) ;
 RegisterCommand( new LIMITSCommand( this, "LIMITS",
 	"(addisp / addnetblock / delisp / delnetblock / list / chlimit / chilimit / chname / chemail / forcecount / glunidented / active / nogline / group / chccidr / clearall / userinfo / info)",
 	true,
@@ -697,7 +687,7 @@ RegisterCommand( new REMOVEIGNORECommand( this, "REMIGNORE", "(nick/host)"
 	false,
 	operLevel::OPERLEVEL,
 	true ) ) ;
-RegisterCommand( new LISTCommand( this, "LIST", "(glines/servers/nomodechannels/exceptions/limits/channels)"
+RegisterCommand( new LISTCommand( this, "LIST", "(glines/servers/nomodechannels/limits/channels)"
 	" Get all kinds of lists from the bot",
 	false,
 	commandLevel::flg_LIST,
@@ -4851,35 +4841,6 @@ int ccontrol::isGlinedException( const string &Host )
 	return 0;
 }
 
-int ccontrol::getExceptions( const string &Host )
-{
-int Exception = 0;
-string::size_type pos = Host.find_first_of('@');
-string::size_type Maskpos;
-string Ident = Host.substr(0,pos);
-string Hostname = Host.substr(pos+1);
-string MaskHostname, MaskIdent;
-
-for(exceptionIterator ptr = exception_begin();ptr != exception_end();ptr++)
-	{
-        /* move the exception host into MaskHostname and strip off the user */
-        MaskHostname = (*ptr)->getHost().c_str();
-        Maskpos = MaskHostname.find_first_of('@');
-        MaskIdent = MaskHostname.substr(0,Maskpos);
-        if((*(*ptr) == Hostname) || !(match(MaskHostname.substr(Maskpos+1),Hostname)))
-		{
-                /* ok, we matched hostname(ip) - check if we match ident too */
-                if (!match(MaskIdent, Ident))
-			if((*ptr)->getConnections() > Exception)
-			{
-				Exception = (*ptr)->getConnections();
-			}
-		} 
-	}
-
-return Exception;
-}
-
 bool ccontrol::isCidrMatch( const string& cidrmask1, const string& cidrmask2 )
 {
 	int client_addr[4] = { 0 };
@@ -5037,109 +4998,6 @@ bool ccontrol::isValidCidr( const string& cidrmask )
 	}
 	return false;
 }
-
-bool ccontrol::listExceptions( iClient *theClient )
-{
-
-Notice(theClient,"-= Exceptions list - listing a total of %d exceptions =-",
-	exceptionList.size());
-
-for(exceptionIterator ptr = exception_begin();ptr != exception_end();ptr++)
-	Notice(theClient,"Host: %s   Connections: %d   AddedBy: %s   Reason: %s",
-		(*ptr)->getHost().c_str(),
-		(*ptr)->getConnections(),
-		(*ptr)->getAddedBy().c_str(),
-		(*ptr)->getReason().c_str());
-
-Notice(theClient,"-= End of exception list =-");
-
-return true;
-}
-
-bool ccontrol::isException( const string & Host )
-{
-for(exceptionIterator ptr = exception_begin();ptr != exception_end();ptr++)
-	{
-	if(*(*ptr) == Host)
-		return true;
-	}
-return false;
-}
-
-
-
-bool ccontrol::insertException( iClient *theClient , const string& Host , int Connections, const string& Reason )
-{
-
-if(!dbConnected)
-	{
-	return false;
-	}
-
-if(isException(Host))
-	{
-	Notice(theClient,
-		"There is already an exception for host %s, "
-		"please use update",
-		Host.c_str());		
-	return true;
-	}
-
-//Create a new ccException structure 
-ccException* tempException = new (std::nothrow) ccException(SQLDb);
-assert(tempException != NULL);
-
-tempException->setHost(removeSqlChars(Host));
-tempException->setConnections(Connections);
-tempException->setAddedBy(removeSqlChars(theClient->getRealNickUserHost()));
-tempException->setAddedOn(::time(0));
-tempException->setReason(Reason);
-//Update the database, and the internal list
-if(!tempException->Insert())
-	{
-	delete tempException;
-	return false;
-	}
-
-exceptionList.push_back(tempException);
-return true;
-}
-
-bool ccontrol::delException( iClient *theClient , const string &Host )
-{
-
-if(!dbConnected)
-	{
-	Notice(theClient, "error: DB not connected.");
-	return false;
-	}
-
-if(!isException(removeSqlChars(Host)))
-	{
-	Notice(theClient,"Can't find exception for host %s",Host.c_str());
-	return true;
-	}
-ccException *tempException = NULL;
-
-for(exceptionIterator ptr = exception_begin();ptr != exception_end();)
-	{
-	tempException = *ptr;
-	if(*tempException == removeSqlChars(Host))
-		{
-		bool status = tempException->Delete();
-		ptr = exceptionList.erase(ptr);
-		delete tempException;
-		if(!status) 
-			{
-			return false;
-			}
-		}
-	    
-	else
-		ptr++;
-	}
-return true;
-}	
 
 ccFloodData *ccontrol::findLogin( const string & Numeric )
 {
@@ -5753,9 +5611,14 @@ for(glineIterator ptr = rnGlineList.begin();ptr != rnGlineList.end();++ptr)
 	(ptr->second)->setSqldb(_SQLDb);
 	}
 
-for(exceptionIterator ptr = exception_begin();ptr != exception_end();++ptr)
+for(ipLispIterator ptr = ipLispVector.begin();ptr != ipLispVector.end();++ptr)
 	{
 	(*ptr)->setSqldb(_SQLDb);
+	}
+
+for(ipLnbIterator ptr = ipLnbVector.begin();ptr != ipLnbVector.end();++ptr)
+	{
+	(ptr->second)->setSqldb(_SQLDb);
 	}
 
 for(usersIterator ptr = usersMap.begin();ptr != usersMap.end();++ptr)
@@ -5777,10 +5640,9 @@ Notice(tmpClient, "Service Uptime: %s", Ago(getUplink()->getStartTime()));
 Notice(tmpClient,"Monitoring %d different clones hosts\n",clientsIpMap.size());
 Notice(tmpClient,"%d glines are waiting in the gline queue",glineQueue.size());
 Notice(tmpClient,"Allocated Structures:");
-Notice(tmpClient,"ccServer: %d, ccGline: %d, ccException: %d, ccUser: %d, ccIpLisp: %d, ccIpLnb: %d",
+Notice(tmpClient,"ccServer: %d, ccGline: %d, ccUser: %d, ccIpLisp: %d, ccIpLnb: %d",
 	ccServer::numAllocated,
 	ccGline::numAllocated,
-	ccException::numAllocated,
 	ccUser::numAllocated,
 	ccIpLisp::numAllocated,
 	ccIpLnb::numAllocated);
@@ -6858,9 +6720,10 @@ return true;
 }
 
 
-bool ccontrol::isIpLClientAllowed( iClient *theClient, ipLretStructListType& retList, bool incCount)
- /* returns false if no more clients are allowed. only counting the new client if incCount is true
+ /*
+  * returns false if no more clients are allowed. Only counting the new client if incCount is true
  */
+bool ccontrol::isIpLClientAllowed( iClient *theClient, ipLretStructListType& retList, bool incCount)
 {
 ccIpLnb* nb;
 int numLeft = 1000000;
@@ -7375,54 +7238,17 @@ return status;
 
 bool ccontrol::loadExceptions()
 {
-static const char Query[] = "SELECT Host,Connections,AddedBy,AddedOn,Reason FROM Exceptions";
-static const char Query2[] = "SELECT name,id,AddedBy,AddedOn,lastmodby,lastmodon,maxlimit,active,email,clonecidr,forcecount,glunidented,isgroup,maxidentlimit,nogline FROM ipLISPs ORDER BY id";
-static const char Query3[] = "SELECT cidr,ispid,AddedBy,AddedOn FROM ipLNetblocks";
+static const char Query[] = "SELECT name,id,AddedBy,AddedOn,lastmodby,lastmodon,maxlimit,active,email,clonecidr,forcecount,glunidented,isgroup,maxidentlimit,nogline FROM ipLISPs ORDER BY id";
+static const char Query2[] = "SELECT cidr,ispid,AddedBy,AddedOn FROM ipLNetblocks";
+stringstream theQuery;
 
 if(!dbConnected)
 	{
 	return false;
 	}
 
-stringstream theQuery;
-theQuery	<< Query
-		<< ends;
-
-#ifdef LOG_SQL
-elog	<< "ccontrol::loadExceptions> "
-	<< theQuery.str().c_str()
-	<< endl; 
-#endif
-
-if( !SQLDb->Exec( theQuery, true ) )
-//if( PGRES_TUPLES_OK != status )
-	{
-	elog	<< "ccontrol::loadExceptions> SQL Failure: "
-		<< SQLDb->ErrorMessage()
-		<< endl ;
-	
-	return false;
-	}
-
-ccException *tempException = NULL;
-
-for( unsigned int i = 0 ; i < SQLDb->Tuples() ; i++ )
-	{
-	tempException =  new (std::nothrow) ccException(SQLDb);
-	assert( tempException != 0 ) ;
-
-	tempException->setHost(SQLDb->GetValue(i,0));
-	tempException->setConnections(atoi(SQLDb->GetValue(i,1).c_str()));
-	tempException->setAddedBy(SQLDb->GetValue(i,2)) ;
-	tempException->setAddedOn(static_cast< time_t >(
-		atoi( SQLDb->GetValue(i,3).c_str() ) )) ;
-	tempException->setReason(SQLDb->GetValue(i,4));
-	exceptionList.push_back(tempException);
-	}
-
-
 theQuery.str("");
-theQuery	<< Query2
+theQuery	<< Query
 		<< ends;
 
 #ifdef LOG_SQL
@@ -7471,7 +7297,7 @@ for( unsigned int i = 0 ; i < SQLDb->Tuples() ; i++ )
 	}
 
 theQuery.str("");
-theQuery	<< Query3
+theQuery	<< Query2
 		<< ends;
 
 #ifdef LOG_SQL
