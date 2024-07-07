@@ -775,7 +775,7 @@ RegisterCommand( new CONFIGCommand( this, "CONFIG",
 	" -GTime <duration in secs> / -VClones <amount> -Clones <amount>"
 	" -CClones <amount> -CClonesCIDR24|CClonesCIDR48 <size> -CClonesGline <Yes/No>"
 	" -CClonesGTime <duration>"
-	" -IClones <amount> -IClonesGline <Yes/No>"
+	" -IClones <amount>"
 	" -CClonesTime <seconds> / -GBCount <count> / -GBInterval <interval in secs> "
 	" -SGline <Yes/No> "
 	"Manages all kinds of configuration related values ",
@@ -2172,10 +2172,7 @@ if(dbConnected)
 	if (irc_in_addr_is_ipv4(&NewUser->getIP()))
 		{
 		is_ipv4 = true;
-		client_ip = IPCIDRMinIP(tIP, CClonesCIDR + 96);
 		}
-	else
-		client_ip = IPCIDRMinIP(tIP, CClonesCIDR);
 
 	if (irc_in_addr_valid(&NewUser->getIP())) //avoid 0:: (0.0.0.0) ip addresses
 		{
@@ -2345,7 +2342,6 @@ if(dbConnected)
 				}
 			}
 		}
-		++clientsIpMap[client_ip];
 		}
 	}
 if (!IsAuth(NewUser))
@@ -3904,9 +3900,6 @@ int ccontrol::checkGline4(string &Host,unsigned int Len,unsigned int &Affected)
 			retMe |=  gline::HUH_NO_HOST;
 	}
 
-	if (getExceptions("*@" + Hostname) > 0)
-		retMe |= gline::HUH_IS_EXCEPTION;
-
 	if (isIpOfOper(Hostname))
 		retMe |= gline::HUH_IS_IP_OF_OPER;
 
@@ -4022,9 +4015,6 @@ int ccontrol::checkGline6(string &Host,unsigned int Len,unsigned int &Affected)
 
 	if (Affected > gline::MFGLINE_USERS)
 		retMe |= gline::FU_NEEDED_USERS; //This gline must be set with -fu flag
-
-	if (getExceptions("*@" + Hostname) > 0)
-		retMe |= gline::HUH_IS_EXCEPTION;
 
 	if (isIpOfOper(Hostname))
 		retMe |= gline::HUH_IS_IP_OF_OPER;
@@ -4621,16 +4611,9 @@ bool ccontrol::loadMisc()
 {
 bool gotInterval= false;
 bool gotCount = false;
-bool gotVClones = false;
-bool gotClones = false;
-bool gotCClones = false;
-bool gotCClonesCIDR24 = false;
-bool gotCClonesCIDR48 = false;
 bool gotCClonesTime = false;
-bool gotCClonesGline = false;
 bool gotCClonesGTime = false;
 bool gotIClones = false;
-bool gotIClonesGline = false;
 bool gotGLen = false;
 bool gotSave = false;
  
@@ -4668,50 +4651,15 @@ for(unsigned int i=0; i< SQLDb->Tuples();++i)
 		gotInterval = true;
 		glineBurstInterval = atoi(SQLDb->GetValue(i,1).c_str());
 		}
-	else if(!strcasecmp(SQLDb->GetValue(i,0),"VClones"))
-		{
-		gotVClones = true;
-		maxVClones = atoi(SQLDb->GetValue(i,1).c_str());
-		}
-	else if(!strcasecmp(SQLDb->GetValue(i,0),"Clones"))
-		{
-		gotClones = true;
-		maxClones = atoi(SQLDb->GetValue(i,1).c_str());
-		}
-        else if(!strcasecmp(SQLDb->GetValue(i,0),"CClones"))
-                {
-                gotCClones = true;
-                maxCClones = atoi(SQLDb->GetValue(i,1).c_str());
-                }
-        else if(!strcasecmp(SQLDb->GetValue(i,0),"CClonesCIDR24"))
-                {
-                gotCClonesCIDR24 = true;
-                CClonesCIDR24 = atoi(SQLDb->GetValue(i,1).c_str());
-                }
-        else if(!strcasecmp(SQLDb->GetValue(i,0),"CClonesCIDR48"))
-                {
-                gotCClonesCIDR48 = true;
-                CClonesCIDR48 = atoi(SQLDb->GetValue(i,1).c_str());
-                }
 	else if(!strcasecmp(SQLDb->GetValue(i,0),"CClonesTime"))
 		{
 		gotCClonesTime = true;
 		CClonesTime = atoi(SQLDb->GetValue(i,1).c_str());
 		}
-        else if(!strcasecmp(SQLDb->GetValue(i,0),"CClonesGline"))
-                {
-                gotCClonesGline = true;
-                CClonesGline = (atoi(SQLDb->GetValue(i,1).c_str()) == 1);
-                }
 	else if(!strcasecmp(SQLDb->GetValue(i,0),"IClones"))
 		{
 		gotIClones = true;
 		maxIClones = atoi(SQLDb->GetValue(i,1).c_str());
-		}
-	else if(!strcasecmp(SQLDb->GetValue(i,0),"IClonesGline"))
-		{
-		gotIClonesGline = true;
-		IClonesGline = (atoi(SQLDb->GetValue(i,1).c_str()) == 1);
 		}
 	else if(!strcasecmp(SQLDb->GetValue(i,0),"GTime"))
 		{
@@ -4741,50 +4689,10 @@ if(!gotInterval)
 	glineBurstInterval = 5;
 	updateMisc("GlineBurstInterval",glineBurstInterval);
 	}
-if(!gotClones)
-	{
-	maxClones = 32;
-	updateMisc("Clones",maxClones);
-	}
-if(!gotVClones)
-	{
-	maxVClones = 32;
-	updateMisc("VClones",maxVClones);
-	}
-if(!gotCClones)
-        {
-        maxCClones = 275;
-        updateMisc("CClones",maxCClones);
-        }
-if(!gotCClonesCIDR24)
-        {
-        CClonesCIDR24 = 24;
-        updateMisc("CClonesCIDR24",CClonesCIDR24);
-        }
-if(!gotCClonesCIDR48)
-        {
-        CClonesCIDR48 = 48;
-        updateMisc("CClonesCIDR48",CClonesCIDR48);
-        }
 if(!gotCClonesTime)
 	{
 	CClonesTime = 60;
 	updateMisc("CClonesTime",CClonesTime);
-	}
-if(!gotCClonesGline)
-        {
-        CClonesGline = false;
-        updateMisc("CClonesGline",CClonesGline);
-        }
-if(!gotIClones)
-	{
-	maxIClones = 20;
-	updateMisc("IClones",maxIClones);
-	}
-if(!gotIClonesGline)
-	{
-	IClonesGline = false;
-	updateMisc("IClonesGline",IClonesGline);
 	}
 if(!gotGLen)
 	{
@@ -5650,19 +5558,6 @@ Notice(tmpClient,"Total of %d users in the map",usersMap.size());
 Notice(tmpClient,"(Gline Burst) - GBCount: %d , GBInterval: %d",
 	glineBurstCount,
 	glineBurstInterval);
-Notice(tmpClient,"Max Clones: %d, Max Virtual Clones: %d",maxClones,maxVClones);
-Notice(tmpClient,"Max Ident24 Clones: %d per /%d",
-	maxIClones,
-	CClonesCIDR24);
-Notice(tmpClient,"Max Ident48 Clones: %d per /%d",
-	maxIClones,
-	CClonesCIDR48);
-Notice(tmpClient,"  Auto-Gline: %s", IClonesGline ? "True" : "False");
-Notice(tmpClient,"Max CIDR24 Clones: %d per /%d",
-	maxCClones,CClonesCIDR24);
-Notice(tmpClient,"Max CIDR48 Clones: %d per /%d",
-	maxCClones,CClonesCIDR48);
-Notice(tmpClient,"  Auto-Gline: %s (for %s)", CClonesGline ? "YES" : "NO", Duration(CClonesGTime));
 Notice(tmpClient,"  (%s between announcements per block)", Duration(CClonesTime));
 Notice(tmpClient,"Save gline is: %s",saveGlines ? "Enabled" : "Disabled"); 
 Notice(tmpClient,"Currently Bursting: %s",inBurst ? "YES" : "NO");
@@ -5679,41 +5574,13 @@ else if(!strcasecmp(varName,"GlineBurstInterval"))
 	{
 	glineBurstInterval = Value;
 	}
-else if(!strcasecmp(varName,"Clones"))
-	{
-	maxClones = Value;
-	}
-else if(!strcasecmp(varName,"VClones"))
-	{
-	maxVClones = Value;
-	}
-else if(!strcasecmp(varName,"CClones"))
-        {
-        maxCClones = Value;
-        }
-else if(!strcasecmp(varName,"CClonesCIDR24"))
-        {
-        CClonesCIDR24 = Value;
-        }
-else if(!strcasecmp(varName,"CClonesCIDR48"))
-        {
-        CClonesCIDR48 = Value;
-        }
 else if(!strcasecmp(varName,"CClonesTime"))
 	{
 	CClonesTime = Value;
 	}
-else if(!strcasecmp(varName,"CClonesGline"))
-        {
-        CClonesGline = (Value == 1);
-	}
 else if(!strcasecmp(varName,"IClones"))
 	{
 	maxIClones = Value;
-	}
-else if(!strcasecmp(varName,"IClonesGline"))
-	{
-	IClonesGline = (Value == 1);
 	}
 else if(!strcasecmp(varName,"GTime"))
 	{
@@ -6190,11 +6057,6 @@ for (Channel::const_userIterator ptr = theChan->userList_begin();
 		break; 
 		}
 	curIP = xIP(TmpClient->getIP()).GetNumericIP();
-	if (getExceptions("*@" + curIP) > 0) 
-		{
-		foundException = true;
-		Notice(theClient, "There is an exception for this user: %s!%s@%s", TmpClient->getNickName().c_str(), TmpClient->getUserName().c_str(), curIP.c_str());
-		}
 	if (isIpOfOper(curIP)) 
 		{
 		Notice(theClient, "%s opered globally before and uses the same IP this user uses: %s!%s@%s", getLastNUHOfOperFromIP(curIP).c_str(), TmpClient->getNickName().c_str(), TmpClient->getUserName().c_str(), curIP.c_str());

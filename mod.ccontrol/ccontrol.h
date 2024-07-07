@@ -710,10 +710,6 @@ public:
 	
 	void wallopsAsServer(const char * , ... );
 
-	int getExceptions( const string & );
-	
-	bool isException( const string & );
-
 	int isGlinedException( const string & );
 
 	void addGlinedException( const string & );
@@ -1166,23 +1162,9 @@ protected:
 
 	int 			ExpiredInterval;
 
-	int			maxClones;
-	 
-	int			maxVClones;
-
-	int			maxCClones;
-
-	int			CClonesCIDR24;
-
-	int			CClonesCIDR48;
-
 	int			CClonesTime;
 
-	bool			CClonesGline;
-
 	int			CClonesGTime;
-
-	bool			IClonesGline;
 
 	int			maxIClones;
 
