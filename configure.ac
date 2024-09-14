@@ -127,10 +127,18 @@ else
   AC_CHECK_TYPE(socklen_t,int)
 fi
 
-AC_ARG_WITH(debug,
-	AS_HELP_STRING([--without-debug],[Disable debugging in the executables]),
-	[dummy=true],
-	[CXXFLAGS="$CXXFLAGS -g"]
+AC_ARG_WITH([debug],
+  AS_HELP_STRING([--without-debug], [Disable debugging in the executables]),
+  [if test "$with_debug" = "no"; then
+     AC_DEFINE([NDEBUG], [1], [Disable debugging mode])
+   else
+     CXXFLAGS="$CXXFLAGS -g"  # Default: Enable debugging
+     AC_DEFINE([DEBUG], [1], [Enable debugging mode])
+   fi],
+  [ # Default case when no option is specified (debug enabled by default)
+   CXXFLAGS="$CXXFLAGS -g"
+   AC_DEFINE([DEBUG], [1], [Enable debugging mode])
+  ]
 )
 
 dnl By default, do NOT build test directory
