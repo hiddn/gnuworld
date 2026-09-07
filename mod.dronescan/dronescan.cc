@@ -3861,8 +3861,16 @@ void dronescan::detachSpyClient(int scId) {
         }
     }
 
-    MyUplink->DetachClient(ic, "Spy client disabled");
+    // Drop from live tracking before detaching: DetachClient() below
+    // synchronously re-enters via OnEvent(EVT_QUIT) -> getSpyClientId() ->
+    // retireAndReplaceSpyClient(), which would otherwise still find this id
+    // live, erase it out from under our iterator (crashing on the erase
+    // below - this matched a production SIGSEGV during SPAM SPYCLIENT DEL),
+    // and wrongly queue it for reintroduction even though it's being
+    // deliberately removed/disabled.
     liveSpyClientsMap.erase(lit);
+
+    MyUplink->DetachClient(ic, "Spy client disabled");
 }
 
 /**
